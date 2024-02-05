@@ -6,6 +6,41 @@ import Button from './Button/Button';
 import Loader from './Loader/Loader';
 import Modal from './Modal/Modal';
 
+const fetchImages = async (
+  query,
+  page,
+  setImages,
+  setPage,
+  setIsLoading,
+  setIsSearching,
+  images
+) => {
+  const apiKey = '40885612-70f55eeefc8db6341de76fae5';
+  const url = `https://pixabay.com/api/?key=${apiKey}&q=${encodeURIComponent(
+    query
+  )}&image_type=photo&orientation=horizontal&per_page=12&page=${page}`;
+
+  setIsLoading(true);
+
+  try {
+    const response = await axios.get(url);
+
+    const newImages = response.data.hits.filter(
+      newImage => !images.some(image => image.id === newImage.id)
+    );
+
+    setImages(prevImages =>
+      page === 1 ? newImages : [...prevImages, ...newImages]
+    );
+    setPage(prevPage => prevPage + 1);
+    setIsSearching(false);
+  } catch (error) {
+    console.error('Error fetching images:', error);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 function App() {
   const [images, setImages] = useState([]);
   const [query, setQuery] = useState('');
@@ -16,42 +51,23 @@ function App() {
 
   useEffect(() => {
     if (isSearching) {
-      fetchImages();
+      fetchImages(
+        query,
+        page,
+        setImages,
+        setPage,
+        setIsLoading,
+        setIsSearching,
+        images
+      );
     }
-  }, [isSearching]);
+  }, [isSearching, query, page, images]);
 
   useEffect(() => {
     if (query !== '') {
       setIsSearching(true);
     }
   }, [query]);
-
-  const fetchImages = async () => {
-    const apiKey = '40885612-70f55eeefc8db6341de76fae5';
-    const url = `https://pixabay.com/api/?key=${apiKey}&q=${encodeURIComponent(
-      query
-    )}&image_type=photo&orientation=horizontal&per_page=12&page=${page}`;
-
-    setIsLoading(true);
-
-    try {
-      const response = await axios.get(url);
-
-      const newImages = response.data.hits.filter(
-        newImage => !images.some(image => image.id === newImage.id)
-      );
-
-      setImages(prevImages =>
-        page === 1 ? newImages : [...prevImages, ...newImages]
-      );
-      setPage(prevPage => prevPage + 1);
-      setIsSearching(false);
-    } catch (error) {
-      console.error('Error fetching images:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleSearch = query => {
     const searchTerm = query.trim() === '' ? 'default' : query;
@@ -74,7 +90,21 @@ function App() {
       <Searchbar onSearch={handleSearch} />
       <ImageGallery images={images} onImageClick={handleImageClick} />
       {isLoading && <Loader />}
-      {!isLoading && images.length > 0 && <Button onClick={fetchImages} />}
+      {!isLoading && images.length > 0 && (
+        <Button
+          onClick={() =>
+            fetchImages(
+              query,
+              page,
+              setImages,
+              setPage,
+              setIsLoading,
+              setIsSearching,
+              images
+            )
+          }
+        />
+      )}
       {selectedImage && <Modal image={selectedImage} onClose={closeModal} />}
     </div>
   );
